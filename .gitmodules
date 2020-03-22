@@ -1,0 +1,3 @@
+[submodule "external/JSONParser"]
+	path = external/JSONParser
+	url = git@github.com:Orcthanc/JSONParser.git
