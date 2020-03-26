@@ -24,7 +24,7 @@ namespace Config {
 	struct Config;
 
 	/**
-	 * 	Used to create a config object from a file and Options array
+	 * 	Used to create a config object from a file and Options
 	 */
 	template <typename eOptionEntry>
 	struct ConfigParser;
@@ -58,8 +58,21 @@ namespace Config {
 
 	template <typename eOptionEntry>
 	struct Config {
-		std::map<eOptionEntry, std::string> options;
-		std::map<eOptionEntry, std::string> id_to_name;
+		/**
+		 *	Writes the config to file (overwrites without asking)
+		 *	@param filename The file to write to
+		 */
+		void writeConfig( const char* filename ){
+			std::ofstream os( filename );
+
+			for( auto& o: options ){
+				os << id_to_name.at( o.first ) << "=" << o.second << "\n";
+			}
+		}
+
+
+		std::map<eOptionEntry, std::string> options;		/**< Contains a mapping from options to values */
+		std::map<eOptionEntry, std::string> id_to_name;		/**< Contains a mapping from options to infile-names */
 	};
 
 	template <typename eOptionEntry>
@@ -68,6 +81,7 @@ namespace Config {
 		/**
 		 *	Adds an option to the Parser
 		 *	@param o The option.
+		 *	@returns Whether the insert was successful
 		 */
 		bool add( Option<eOptionEntry>&& o ){
 			if( id_to_option.find( o.optionID ) != id_to_option.end() ){
@@ -96,6 +110,7 @@ namespace Config {
 		 *	@param argc Number of args in argv (at least one)
 		 *	@param argv Arguments where argv[0] is the executable path
 		 *	@param[out] exit Gets set to true if the program is requested to exit (--help)
+		 *	@returns A config object containing all read options
 		 */
 		Config<eOptionEntry> read_config( const char* filename, int argc, char** argv, bool* exit ){
 			// Reads in order cmd, file, default, because insert doesn't overwrite
@@ -171,8 +186,13 @@ namespace Config {
 			return config;
 		}
 
-		ConfigParser( 
-				std::function<void(std::string)> error_callback = 
+		/**
+		 *	Constructor
+		 *	@param error_callback function taking a error message and returning void
+		 *	@param warning_callback function taking a warning and returning void
+		 */
+		ConfigParser(
+				std::function<void(std::string)> error_callback =
 						[]( std::string msg ){ std::cout << msg << std::endl; },
 				std::function<void(std::string)> warning_callback =
 						[]( std::string msg ){ std::cout << msg << std::endl; })
@@ -188,12 +208,4 @@ namespace Config {
 
 	};
 
-	template <typename eOptionEntry>
-	void writeConfig( const char* filename, Config<eOptionEntry> config ){
-		std::ofstream os( filename );
-
-		for( auto& o: config.options ){
-			os << config.id_to_name.at( o.first ) << "=" << o.second << "\n";
-		}
-	}
 }
