@@ -43,9 +43,10 @@ namespace Config {
 	 *	@param shortcut One-letter-shortcut read by the cmd-line-parser
 	 *	@param args Indicates if the arg requires a parameter (0 = no, 1 = yes, 2 = maybe)
 	 *	@param description description displayed when invoked with --help
+	 *	@param default_val default value
 	 */
-		Option( eOptionEntry optionID, std::string name, int shortcut, int args, std::string description ):
-			optionID( optionID ), name( std::move( name )), shortcut( shortcut ), args( args ), description( std::move( description )){}
+		Option( eOptionEntry optionID, std::string name, int shortcut, int args, std::string description, std::string default_value ):
+			optionID( optionID ), name( std::move( name )), shortcut( shortcut ), args( args ), description( std::move( description )), default_val( default_value ){}
 
 		eOptionEntry optionID;		/**< The id to wich the resulting value will be mapped. Should be unique and probably an enum */
 		std::string name;			/**< The name used to save to file and passed with '--' */
@@ -136,9 +137,9 @@ namespace Config {
 					return Config<eOptionEntry>();
 				}
 				if( id_to_option.at( shortcut_to_id.at( c )).args ){
-					config.options.emplace( shortcut_to_id.at( c ), optarg ? optarg : "" );
+					config.options.emplace( shortcut_to_id.at( c ), optarg ? optarg : "1" );
 				} else {
-					config.options.emplace( shortcut_to_id.at( c ), "" );
+					config.options.emplace( shortcut_to_id.at( c ), "1" );
 				}
 			}
 
@@ -186,4 +187,13 @@ namespace Config {
 			std::function<void(std::string)> warn_callback;
 
 	};
+
+	template <typename eOptionEntry>
+	void writeConfig( const char* filename, Config<eOptionEntry> config ){
+		std::ofstream os( filename );
+
+		for( auto& o: config.options ){
+			os << config.id_to_name.at( o.first ) << "=" << o.second << "\n";
+		}
+	}
 }

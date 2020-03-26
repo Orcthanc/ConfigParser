@@ -7,10 +7,12 @@ enum class eOptions {
 
 int main( int argc, char** argv ){
 	Config::ConfigParser<eOptions> parser;
-	parser.add({ eOptions::eAsdf, "asdf", 'a', 0, "asdfasdfasdf" });
-	parser.add({ eOptions::eHjkl, "jkl", 'j', 0, "jklhjklhjkl" });
+	parser.add({ eOptions::eAsdf, "asdf", 'a', 1, "asdfasdfasdf", "0" });
+	parser.add({ eOptions::eHjkl, "jkl", 'j', 0, "jklhjklhjkl", "12" });
 
 	bool exit = false;
 
 	auto options = parser.read_config( "./config.cfg", argc, argv, &exit );
+
+	Config::writeConfig( "./config.cfg", options );
 }
