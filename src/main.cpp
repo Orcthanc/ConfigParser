@@ -14,5 +14,5 @@ int main( int argc, char** argv ){
 
 	auto options = parser.read_config( "./config.cfg", argc, argv, &exit );
 
-	Config::writeConfig( "./config.cfg", options );
+	options.writeConfig( "./config.cfg" );
 }
