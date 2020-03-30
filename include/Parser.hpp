@@ -1,211 +1,124 @@
-#pragma once
+/*
+ * =====================================================================================
+ *
+ *       Filename:  Parser.hpp
+ *
+ *    Description:  The Parser
+ *
+ *        Version:  1.0
+ *        Created:  03/30/2020 03:35:46 PM
+ *       Revision:  none
+ *
+ *         Author:  Samuel Knoethig (), samuel@knoethig.net
+ *
+ * =====================================================================================
+ */
+
+/**
+ *	#define CFGOPTIONS								\
+ *		CFGOPTION( name, datatype, defaultvalue )	\
+ *		CFGOPTION( xres, uint32_t, 1920 )			\
+ *		CFGOPTION( fullscreen, bool, false )
+ *
+ *	All passed datatypes need to have Config::to_string<datatype> (defaults to std::to_string) and Config::from_string (defaults to std::sto? where applicable and T( const std::string ) otherwise ) defined
+ */
 
 #include <string>
-#include <map>
+#include <stdexcept>
 #include <fstream>
-#include <functional>
 #include <iostream>
+#include <functional>
 
 #include <string.h>
-#include <getopt.h>
+
+#include "CommonConversions.hpp"
 
 namespace Config {
 
 	/**
-	 * 	A option that can be passed to the parser
+	 *	Enum containing all the Config Options
 	 */
-	template <typename eOptionEntry>
-	struct Option;
-
-	/**
-	 * 	An object containing a configuration
-	 */
-	template <typename eOptionEntry>
-	struct Config;
-
-	/**
-	 * 	Used to create a config object from a file and Options
-	 */
-	template <typename eOptionEntry>
-	struct ConfigParser;
-
-
-
-
-
-/*----------------------------------------------------------------------------*/
-	template <typename eOptionEntry>
-	struct Option {
-	/**
-	 * 	Constructor
-	 *	@param optionID id used in the map returned by Config
-	 *	@param name name read by the cmd-line parser and/or fileparser
-	 *	@param shortcut One-letter-shortcut read by the cmd-line-parser
-	 *	@param args Indicates if the arg requires a parameter (0 = no, 1 = yes, 2 = maybe)
-	 *	@param description description displayed when invoked with --help
-	 *	@param default_val default value
-	 */
-		Option( eOptionEntry optionID, std::string name, int shortcut, int args, std::string description, std::string default_value ):
-			optionID( optionID ), name( std::move( name )), shortcut( shortcut ), args( args ), description( std::move( description )), default_val( default_value ){}
-
-		eOptionEntry optionID;		/**< The id to wich the resulting value will be mapped. Should be unique and probably an enum */
-		std::string name;			/**< The name used to save to file and passed with '--' */
-		int shortcut;				/**< The oneletter name passed with '-' when reading cmd-line args. */
-		int args;					/**< Indicates if the option needs a argument 0 = no, 1 = yes, 2 = maybe */
-		std::string description;	/**< The description shown when passing --help or -h */
-		std::string default_val;	/**< The default value assigned if none is passed */
+	enum class CfgOption: int {
+		#define CFGOPTION( name, type, value ) \
+		name,
+		CFGOPTIONS
+		#undef CFGOPTION
 	};
 
-	template <typename eOptionEntry>
 	struct Config {
-		/**
-		 *	Writes the config to file (overwrites without asking)
-		 *	@param filename The file to write to
-		 */
-		void writeConfig( const char* filename ){
-			std::ofstream os( filename );
+		Config(
+				std::function<void(const std::string&)> error_callback = []( const std::string& msg ){ std::cout << "Error: " << msg << std::endl; },
+				std::function<void(const std::string&)> warning_callback = []( const std::string& msg ){ std::cout << "Warning: " << msg << std::endl; }
+				): error_callback( error_callback ), warning_callback( warning_callback ){
+			#define CFGOPTION( name, type, value ) \
+			name = ( value );
+			CFGOPTIONS
+			#undef CFGOPTION
+		};
 
-			for( auto& o: options ){
-				os << id_to_name.at( o.first ) << "=" << o.second << "\n";
-			}
-		}
+		bool write( const std::string& filename ){
+			std::ofstream file( filename );
 
-
-		std::map<eOptionEntry, std::string> options;		/**< Contains a mapping from options to values */
-		std::map<eOptionEntry, std::string> id_to_name;		/**< Contains a mapping from options to infile-names */
-	};
-
-	template <typename eOptionEntry>
-	struct ConfigParser {
-
-		/**
-		 *	Adds an option to the Parser
-		 *	@param o The option.
-		 *	@returns Whether the insert was successful
-		 */
-		bool add( Option<eOptionEntry>&& o ){
-			if( id_to_option.find( o.optionID ) != id_to_option.end() ){
-				last_error = "ID already registered by command " + id_to_option.find( o.optionID )->second.name;
+			if( !file.is_open() ){
+				error_callback( "Could not write config to file: \"" + filename + "\"" );
 				return false;
 			}
 
-			name_to_id.emplace( o.name, o.optionID );
-			if( o.shortcut )
-				shortcut_to_id.emplace( o.shortcut, o.optionID );
+			#define CFGOPTION( name, type, value ) \
+			file << #name << " = " << to_string<type>( name ) << std::endl;
+			CFGOPTIONS
+			#undef CFGOPTION
 
-			id_to_option.emplace( o.optionID, std::move( o ));
 			return true;
 		}
 
-		/**
-		 *	Returns the last error in human readable format
-		 */
-		std::string error_msg(){
-			return last_error;
-		}
+		bool read( const std::string& filename ){
+			std::ifstream file( filename );
 
-		/**
-		 *	Reads a configfile and commandlineoptions
-		 *	@param filename The name of the configfile or nullptr
-		 *	@param argc Number of args in argv (at least one)
-		 *	@param argv Arguments where argv[0] is the executable path
-		 *	@param[out] exit Gets set to true if the program is requested to exit (--help)
-		 *	@returns A config object containing all read options
-		 */
-		Config<eOptionEntry> read_config( const char* filename, int argc, char** argv, bool* exit ){
-			// Reads in order cmd, file, default, because insert doesn't overwrite
-			Config<eOptionEntry> config;
-
-			// Read cmdline
-			std::vector<struct option> options;
-			std::string valid_chars = "h";
-			options.push_back({ "help", no_argument, nullptr, 'h' });
-			for( auto& o: id_to_option ){
-				options.push_back({ o.second.name.c_str(), o.second.args, nullptr, o.second.shortcut });
-				if( o.second.args < 128 ){
-					valid_chars += o.second.shortcut;
-					if( o.second.args ){
-						valid_chars += ':';
-						if( o.second.args == 2 )
-							valid_chars += ':';
-					}
-				}
+			if( !file.is_open() ){
+				warning_callback( "Could not read config file: \"" + filename + "\"" );
+				return false;
 			}
-			options.push_back({ nullptr, 0, nullptr, 0 });
 
-			int c;
+			char buffer[1024];
 
+			while( file.getline( buffer, 1024 )){
+				std::string name( strtok( buffer, ":= " ));
+				name.erase(std::remove_if(name.begin(), name.end(), ::isspace), name.end());
+				std::string value( strtok( nullptr, ":= " ));
+				value.erase(std::remove_if(value.begin(), value.end(), ::isspace), value.end());
 
-			while (( c = getopt_long( argc, argv, valid_chars.c_str(), options.data(), nullptr )) != -1 ){
-				if( c == 1 || c == 0 )
+				if( name[0] == '#' )
 					continue;
-				if( c == '?' || c == ':' ){
-					error_callback( "Encountered unknown cmd option. Try --help. Aborting..." );
-					*exit = true;
-					return Config<eOptionEntry>();
+
+				#define CFGOPTION( name_, type_, value_ ) \
+				if( #name_ == name ){ \
+					name_ = from_string<type_>( value ); \
 				}
-				if( c == 'h' ){
-					for( auto& o: id_to_option ){
-						printf( "\t-%c, --%-32s %s\n", o.second.shortcut, o.second.name.c_str(), o.second.description.c_str() );
-					}
-					*exit = true;
-					return Config<eOptionEntry>();
-				}
-				if( id_to_option.at( shortcut_to_id.at( c )).args ){
-					config.options.emplace( shortcut_to_id.at( c ), optarg ? optarg : "1" );
-				} else {
-					config.options.emplace( shortcut_to_id.at( c ), "1" );
-				}
+				CFGOPTIONS
+				#undef CFGOPTION
 			}
 
-
-			// Read file
-			if( filename ){
-				std::ifstream infile( filename );
-				if( !infile.fail()){
-					char line[1024];
-					char* temp = nullptr;
-
-					while ( infile.getline( line, 1023 )){
-						temp = strtok( line, "=:" );
-						auto name = name_to_id.find( temp );
-						if( name == name_to_id.end() ){
-							warn_callback( "Encountered unknown config option " + std::string( temp ) + ". Skipping..." );
-							continue;
-						}
-						config.options.emplace( name->second, strtok( nullptr, "=:" ));
-					}
-				}
-			}
-			// Default and init id_to_name
-			for ( auto& o: id_to_option ) {
-				config.options.emplace( o.first, o.second.default_val );
-				config.id_to_name.emplace( o.first, o.second.name );
-			}
-
-			return config;
+			return true;
 		}
 
-		/**
-		 *	Constructor
-		 *	@param error_callback function taking a error message and returning void
-		 *	@param warning_callback function taking a warning and returning void
-		 */
-		ConfigParser(
-				std::function<void(std::string)> error_callback =
-						[]( std::string msg ){ std::cout << msg << std::endl; },
-				std::function<void(std::string)> warning_callback =
-						[]( std::string msg ){ std::cout << msg << std::endl; })
-					: last_error( "" ), id_to_option(), shortcut_to_id(), name_to_id(), error_callback( error_callback ), warn_callback( warning_callback ){}
+		template<int enumval>
+		void get(){}
+
+		#define CFGOPTION( name, type, value )	\
+		template <>						\
+		type& get<CfgOption::name>(){	\
+			return name;				\
+		}
+		#undef CFGOPTION
+
+		#define CFGOPTION( name, type, value ) \
+		type name;
+		CFGOPTIONS
+		#undef CFGOPTION
 
 		private:
-			std::string last_error;
-			std::map<eOptionEntry, Option<eOptionEntry>> id_to_option;
-			std::map<char, eOptionEntry> shortcut_to_id;
-			std::map<std::string, eOptionEntry> name_to_id;
-			std::function<void(std::string)> error_callback;
-			std::function<void(std::string)> warn_callback;
-
+			std::function<void(const std::string&)> error_callback;
+			std::function<void(const std::string&)> warning_callback;
 	};
-
 }
