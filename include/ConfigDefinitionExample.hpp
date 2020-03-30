@@ -24,18 +24,18 @@ struct OwnType {
 
 namespace Config {
 	template <typename T>
-	std::string to_string( const T& val );
+	inline std::string to_string( const T& val );
 
 	template <typename T>
-	T from_string( const std::string& val );
+	inline T from_string( const std::string& val );
 
 	template <>
-	std::string to_string<OwnType>( const OwnType& t ){
+	inline std::string to_string<OwnType>( const OwnType& t ){
 		return std::to_string( t.val );
 	}
 
 	template <>
-	OwnType from_string<OwnType>( const std::string& str ){
+	inline OwnType from_string<OwnType>( const std::string& str ){
 		return { std::stoul( str ) };
 	}
 }
