@@ -20,32 +20,32 @@
 
 namespace Config {
 	template <typename T>
-	std::string to_string( const T& val ){
+	inline std::string to_string( const T& val ){
 		return std::to_string( val );
 	}
 
 	template <typename T>
-	T from_string( const std::string& val ){
+	inline T from_string( const std::string& val ){
 		return T( val );
 	}
 
 	template <>
-	std::string to_string<std::string>( const std::string& val ){
+	inline std::string to_string<std::string>( const std::string& val ){
 		return val;
 	}
 
 	template <>
-	std::string from_string<std::string>( const std::string& val ){
+	inline std::string from_string<std::string>( const std::string& val ){
 		return val;
 	}
 
 	template <>
-	std::string to_string<bool>( const bool& val ){
+	inline std::string to_string<bool>( const bool& val ){
 		return val ? "true" : "false";
 	}
 
 	template <>
-	bool from_string<bool>( const std::string& val ){
+	inline bool from_string<bool>( const std::string& val ){
 		if( val == "true" || val == "TRUE" || val == "True" || val == "yes" || val == "Yes" || val == "YES" ){
 			return true;
 		}
@@ -54,12 +54,12 @@ namespace Config {
 	}
 
 	template <>
-	int from_string<int>( const std::string& val ){
+	inline int from_string<int>( const std::string& val ){
 		return std::stoi( val );
 	}
 
 	template <>
-	unsigned from_string<unsigned>( const std::string& val ){
+	inline unsigned from_string<unsigned>( const std::string& val ){
 		unsigned long temp = std::stoul( val );
 		if( std::numeric_limits<unsigned>::max() < temp )
 			throw std::overflow_error( "from_string<unsigned>( " + val + " )" );
@@ -67,37 +67,37 @@ namespace Config {
 	}
 
 	template <>
-	long from_string<long>( const std::string& val ){
+	inline long from_string<long>( const std::string& val ){
 		return std::stol( val );
 	}
 
 	template <>
-	unsigned long from_string<unsigned long>( const std::string& val ){
+	inline unsigned long from_string<unsigned long>( const std::string& val ){
 		return std::stoul( val );
 	}
 
 	template <>
-	long long from_string<long long>( const std::string& val ){
+	inline long long from_string<long long>( const std::string& val ){
 		return std::stoll( val );
 	}
 
 	template <>
-	unsigned long long from_string<unsigned long long>( const std::string& val ){
+	inline unsigned long long from_string<unsigned long long>( const std::string& val ){
 		return std::stoull( val );
 	}
 
 	template <>
-	float from_string<float>( const std::string& val ){
+	inline float from_string<float>( const std::string& val ){
 		return std::stof( val );
 	}
 
 	template <>
-	double from_string<double>( const std::string& val ){
+	inline double from_string<double>( const std::string& val ){
 		return std::stod( val );
 	}
 
 	template <>
-	long double from_string<long double>( const std::string& val ){
+	inline long double from_string<long double>( const std::string& val ){
 		return std::stold( val );
 	}	
 }
