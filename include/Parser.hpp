@@ -22,6 +22,7 @@
  *
  *	All passed datatypes need to have Config::to_string<datatype> (defaults to std::to_string) and Config::from_string (defaults to std::sto? where applicable and T( const std::string ) otherwise ) defined
  */
+#pragma once
 
 #include <string>
 #include <stdexcept>
